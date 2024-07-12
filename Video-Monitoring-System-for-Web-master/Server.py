@@ -10,8 +10,8 @@ def main():
     gst_pipeline = (
         "appsrc ! "
         "videoconvert ! "
-        "x264enc tune=zerolatency bitrate=500 speed-preset=superfast ! "
-        "rtph264pay config-interval=1 pt=96 ! "
+        "jpegenc ! "
+        "rtpjpegpay ! "
         "udpsink host=127.0.0.1 port=8554"
     )
     out = cv2.VideoWriter(gst_pipeline, cv2.CAP_GSTREAMER, 0, 25, (640, 480), True)
