@@ -8,12 +8,12 @@ from picamera2 import Picamera2, Preview
 import time
 import os
 from datetime import datetime
+import camera
 # 加载 YOLOv8 模型
 model = YOLO("best.pt")
 
 # 初始化 Picamera2
-picam2 = Picamera2()
-picam2.configure(picam2.create_preview_configuration(main={"format": "RGB888", "size": (640, 480)}))
+picam2 = camera.Camera()
 picam2.start()
 # 创建视频存储文件夹
 if not os.path.exists('video'):
@@ -55,9 +55,15 @@ def Get_video_realtime():
                 start_time = current_time
 
             # 捕获图像
-            frame = picam2.capture_array()
-            if frame is None:
+            try:
+                frame = picam2.capture_frame()
+                if frame is None:
+                    print("Captured frame is None, skipping...")
+                    continue
+            except Exception as e:
+                print(f"Error capturing frame: {e}")
                 continue
+
             frame_bgr = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
 
             # 将帧写入视频文件
