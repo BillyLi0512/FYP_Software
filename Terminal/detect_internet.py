@@ -10,7 +10,7 @@ import os
 from datetime import datetime
 import camera
 # 加载 YOLOv8 模型
-model = YOLO("best.pt")
+model = YOLO("yolov8n-pose.pt")
 
 # 初始化 Picamera2
 picam2 = camera.Camera()

@@ -3,14 +3,14 @@ from ultralytics import YOLO
 from cv2 import getTickCount, getTickFrequency
 
 # 加载 YOLOv8 模型
-model = YOLO("best.pt")
+model = YOLO("yolov8n-seg.pt在")
 
 # 获取摄像头内容，参数 0 表示使用默认的摄像头
-cap = cv2.VideoCapture(1)
+cap = cv2.VideoCapture(0)
 
 while cap.isOpened():
     loop_start = getTickCount()
-    success, frame = cap.read()  # 读取摄像头的一帧图像
+    success, frame = cap.read()  # 读取摄像头的一帧图像2
 
     if success:
         results = model.predict(source=frame)  # 对当前帧进行目标检测并显示结果
