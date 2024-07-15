@@ -93,4 +93,4 @@ def receive_video(server_ip, server_port):
         cv2.destroyAllWindows()
 
 if __name__ == "__main__":
-    receive_video_realtime("192.168.3.40", 8000)
+    receive_video_realtime("192.168.3.210", 8000)

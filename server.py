@@ -11,7 +11,7 @@ def send_video_realtime():
     client_socket, client_address = server_socket.accept()
     print(f"客户端 {client_address} 已连接")
 
-    cap = cv2.VideoCapture('/dev/video0')
+    cap = cv2.VideoCapture(0)
 
     if not cap.isOpened():
         print("无法打开摄像头")
