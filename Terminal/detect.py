@@ -3,7 +3,7 @@ from ultralytics import YOLO
 from cv2 import getTickCount, getTickFrequency
 
 # 加载 YOLOv8 模型
-model = YOLO("yolov8n-seg.pt在")
+model = YOLO("yolov8n-seg.pt)
 
 # 获取摄像头内容，参数 0 表示使用默认的摄像头
 cap = cv2.VideoCapture(0)
