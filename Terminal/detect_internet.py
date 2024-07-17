@@ -12,41 +12,12 @@ import camera
 import cv2
 from ultralytics import YOLO, solutions
 import Counting
-# 加载 YOLOv8 模型
-model = YOLO("yolov8n-pose.pt")
-
-# 初始化 Picamera2
-picam2 = Picamera2()
-
-# 启动相机以获取控制信息
-picam2.start()
-
-# 创建视频存储文件夹
-if not os.path.exists('video'):
-    os.makedirs('video')
-
-w = 640
-h = 480
-fps = 30
+from threading import Thread
+import time
+from time import sleep
 
 
-# Define points for a line or region of interest in the video frame
-line_points = [(3 * w / 4, 0), (3 * w / 4, h)]  # Line coordinates
 
-# Specify classes to count, for example: person (0) and car (2)
-classes_to_count = [0]  # Class IDs for person and car
-
-# Initialize the video writer to save the output video
-video_writer = cv2.VideoWriter("object_counting_output.mp4", cv2.VideoWriter_fourcc(*"mp4v"), fps, (w, h))
-
-# Initialize the Object Counter with visualization options and other parameters
-counter = Counting.SubCounter(
-    view_img=True,
-    reg_pts=line_points,
-    names=model.names,
-    draw_tracks=True,
-    line_thickness=2,
-)
 app = Flask(__name__)
 
 # 添加根路由
@@ -65,8 +36,42 @@ def index():
     </html>
     ''')
 
-def Get_video_realtime():
+def Get_video_realtime(model):
+    # 加载 YOLOv8 模型
+    model = YOLO(model)
+
+    # 初始化 Picamera2
+    picam2 = Picamera2()
+
+    # 启动相机以获取控制信息
+    picam2.start()
+
+    # 创建视频存储文件夹
+    if not os.path.exists('video'):
+        os.makedirs('video')
+
+    # w,h,fps = 640,480,30
+    #
+    # # Define points for a line or region of interest in the video frame
+    # line_points = [(3 * w / 4, 0), (3 * w / 4, h)]  # Line coordinates
+    #
+    # # Specify classes to count, for example: person (0) and car (2)
+    # classes_to_count = [0]  # Class IDs for person and car
+    #
+    # # Initialize the video writer to save the output video
+    # video_writer = cv2.VideoWriter("object_counting_output.mp4", cv2.VideoWriter_fourcc(*"mp4v"), fps, (w, h))
+    #
+    # # Initialize the Object Counter with visualization options and other parameters
+    # counter = Counting.SubCounter(
+    #     view_img=True,
+    #     reg_pts=line_points,
+    #     names=model.names,
+    #     draw_tracks=True,
+    #     line_thickness=2,
+    # )
+
     start_time = time.time()
+
     video_writer = None
     while True:
             current_time = time.time()
@@ -97,19 +102,19 @@ def Get_video_realtime():
             # 将帧写入视频文件
             video_writer.write(frame_bgr)
 
-            #results = model.predict(source=frame_bgr)  # 对当前帧进行目标检测并显示结果
-            #annotated_frame = results[0].plot()
+            results = model.predict(source=frame_bgr)  # 对当前帧进行目标检测并显示结果
+            annotated_frame = results[0].plot()
 
-            # Perform object tracking on the current frame, filtering by specified classes
-            tracks = model.track(frame, persist=True, show=False, classes=classes_to_count)
-
-            # Use the Object Counter to count objects in the frame and get the annotated image
-            frame = counter.start_counting(frame, tracks)
-
-            # 在帧上绘制检测结果
-            annotated_frame = tracks[0].plot()
-
-            video_writer.write(frame)
+            # # Perform object tracking on the current frame, filtering by specified classes
+            # tracks = model.track(frame, persist=True, show=False, classes=classes_to_count)
+            #
+            # # Use the Object Counter to count objects in the frame and get the annotated image
+            # frame = counter.start_counting(frame, tracks)
+            #
+            # # 在帧上绘制检测结果
+            # annotated_frame = tracks[0].plot()
+            #
+            # video_writer.write(frame)
 
             print("成功完成yolo8推理。")
             # 计算 FPS
@@ -131,9 +136,61 @@ def Get_video_realtime():
     # 确保在程序结束时释放视频写入对象
     if video_writer is not None:
         video_writer.release()
+
+
+def detect_video(model_path, video_path, output_path='output.avi'):
+    # 加载 YOLO 模型
+    model = YOLO(model_path)
+
+    # 打开视频文件
+    cap = cv2.VideoCapture(video_path)
+
+    # 获取视频的宽度、高度和帧率
+    width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+    height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+    fps = int(cap.get(cv2.CAP_PROP_FPS))
+
+    # 定义视频编解码器并创建 VideoWriter 对象
+    fourcc = cv2.VideoWriter_fourcc(*'XVID')
+    out = cv2.VideoWriter(output_path, fourcc, fps, (width, height))
+
+    while cap.isOpened():
+        ret, frame = cap.read()
+        if not ret:
+            break
+
+        # 使用 YOLO 模型进行推理
+        results = model.predict(source=frame, show=False)  # 关闭显示窗口
+
+        # 获取推理结果并绘制到帧上
+        annotated_frame = results[0].plot()
+
+        # 将处理后的帧写入输出视频文件
+        out.write(annotated_frame)
+
+        # 可选：在窗口中显示处理后的帧
+        cv2.imshow('frame', annotated_frame)
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            break
+
+    # 释放视频捕获和写入对象
+    cap.release()
+    out.release()
+    cv2.destroyAllWindows()
+    print("The process of video:"+video_path+" is finished.")
+
 @app.route('/video')
 def video():
     return Response(Get_video_realtime(), mimetype='multipart/x-mixed-replace; boundary=frame')
 
 if __name__ == '__main__':
-    app.run(host='192.168.3.210', port=8001)
+    # app.run(host='192.168.3.210', port=8001)
+    detect_video('best.pt', '1.mp4', 'output_video.avi')
+    thread1 = Thread(target=detect_video, args=('best.pt', '1.mp4', 'output_video_1.avi'))  # 线程1
+    thread2 = Thread(target=detect_video, args=('best.pt', '2.mp4', 'output_video_2.avi'))  # 线程2
+
+    thread1.start()  # 线程1启动
+    thread2.start()  # 任务2启动
+    thread2.join()  # 等待线程2
+    thread1.join()  # 等待线程1完成线程
+
