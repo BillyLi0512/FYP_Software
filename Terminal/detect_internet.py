@@ -9,16 +9,44 @@ import time
 import os
 from datetime import datetime
 import camera
+import cv2
+from ultralytics import YOLO, solutions
+import Counting
 # 加载 YOLOv8 模型
 model = YOLO("yolov8n-pose.pt")
 
 # 初始化 Picamera2
-picam2 = camera.Camera()
+picam2 = Picamera2()
+
+# 启动相机以获取控制信息
 picam2.start()
+
 # 创建视频存储文件夹
 if not os.path.exists('video'):
     os.makedirs('video')
 
+w = 640
+h = 480
+fps = 30
+
+
+# Define points for a line or region of interest in the video frame
+line_points = [(3 * w / 4, 0), (3 * w / 4, h)]  # Line coordinates
+
+# Specify classes to count, for example: person (0) and car (2)
+classes_to_count = [0]  # Class IDs for person and car
+
+# Initialize the video writer to save the output video
+video_writer = cv2.VideoWriter("object_counting_output.mp4", cv2.VideoWriter_fourcc(*"mp4v"), fps, (w, h))
+
+# Initialize the Object Counter with visualization options and other parameters
+counter = Counting.SubCounter(
+    view_img=True,
+    reg_pts=line_points,
+    names=model.names,
+    draw_tracks=True,
+    line_thickness=2,
+)
 app = Flask(__name__)
 
 # 添加根路由
@@ -56,7 +84,7 @@ def Get_video_realtime():
 
             # 捕获图像
             try:
-                frame = picam2.capture_frame()
+                frame = picam2.capture_array()
                 if frame is None:
                     print("Captured frame is None, skipping...")
                     continue
@@ -69,8 +97,20 @@ def Get_video_realtime():
             # 将帧写入视频文件
             video_writer.write(frame_bgr)
 
-            results = model.predict(source=frame_bgr)  # 对当前帧进行目标检测并显示结果
-            annotated_frame = results[0].plot()
+            #results = model.predict(source=frame_bgr)  # 对当前帧进行目标检测并显示结果
+            #annotated_frame = results[0].plot()
+
+            # Perform object tracking on the current frame, filtering by specified classes
+            tracks = model.track(frame, persist=True, show=False, classes=classes_to_count)
+
+            # Use the Object Counter to count objects in the frame and get the annotated image
+            frame = counter.start_counting(frame, tracks)
+
+            # 在帧上绘制检测结果
+            annotated_frame = tracks[0].plot()
+
+            video_writer.write(frame)
+
             print("成功完成yolo8推理。")
             # 计算 FPS
             loop_time = getTickCount() - loop_start
