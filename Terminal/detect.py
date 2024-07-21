@@ -6,7 +6,7 @@ from cv2 import getTickCount, getTickFrequency
 model = YOLO("yolov8n-seg.pt")
 
 # 获取摄像头内容，参数 0 表示使用默认的摄像头
-cap = cv2.VideoCapture(0)
+cap = cv2.VideoCapture(1)
 
 while cap.isOpened():
     loop_start = getTickCount()
